@@ -626,17 +626,34 @@ static int lwt_parse_bpf(struct rtattr *rta, size_t len,
 	return 0;
 }
 
+static int parse_mac(uint8_t *mac, const char *str)
+{
+  printf("SLANK: %s\n", str);
+  uint32_t val[6];
+  int ret = sscanf(str, "%x:%x:%x:%x:%x:%x",
+      &val[0], &val[1], &val[2],
+      &val[3], &val[4], &val[5]);
+  if (ret != 6)
+    return -1;
+  for (int i = 0; i < 6; i++)
+    mac[i] = (char) val[i];
+  return ret;
+}
+
 static int parse_encap_seg6local(struct rtattr *rta, size_t len, int *argcp,
 				 char ***argvp)
 {
 	int segs_ok = 0, hmac_ok = 0, table_ok = 0, nh4_ok = 0, nh6_ok = 0;
 	int iif_ok = 0, oif_ok = 0, action_ok = 0, srh_ok = 0, bpf_ok = 0;
+	int mac_ok = 0;
 	__u32 action = 0, table, iif, oif;
 	struct ipv6_sr_hdr *srh;
 	char **argv = *argvp;
 	int argc = *argcp;
 	char segbuf[1024];
 	inet_prefix addr;
+	__u8 mac_addr[6];
+	int addr_len = 0;
 	__u32 hmac = 0;
 	int ret = 0;
 
@@ -670,6 +687,15 @@ static int parse_encap_seg6local(struct rtattr *rta, size_t len, int *argcp,
 			get_addr(&addr, *argv, AF_INET6);
 			ret = rta_addattr_l(rta, len, SEG6_LOCAL_NH6,
 					    &addr.data, addr.bytelen);
+		} else if (strcmp(*argv, "mac") == 0) {
+			NEXT_ARG();
+			if (mac_ok++)
+				duparg2("mac", *argv);
+			addr_len = parse_mac(mac_addr, *argv);
+			if (addr_len < 0)
+				exit(nodev(*argv));
+			ret = rta_addattr_l(rta, len, SEG6_LOCAL_MAC,
+							mac_addr, addr_len);
 		} else if (strcmp(*argv, "iif") == 0) {
 			NEXT_ARG();
 			if (iif_ok++)

@@ -42,6 +42,7 @@ int rcvbuf = 1024 * 1024;
 
 #ifdef HAVE_LIBMNL
 #include <libmnl/libmnl.h>
+#include "slankdev.h"
 
 static const enum mnl_attr_data_type extack_policy[NLMSGERR_ATTR_MAX + 1] = {
 	[NLMSGERR_ATTR_MSG]	= MNL_TYPE_NUL_STRING,
@@ -630,6 +631,7 @@ int rtnl_dump_request_n(struct rtnl_handle *rth, struct nlmsghdr *n)
 
 static int rtnl_dump_done(struct nlmsghdr *h)
 {
+	fprintf(stderr, "1\n");
 	int len = *(int *)NLMSG_DATA(h);
 
 	if (h->nlmsg_len < NLMSG_LENGTH(sizeof(int))) {
@@ -666,6 +668,7 @@ static int rtnl_dump_done(struct nlmsghdr *h)
 static void rtnl_dump_error(const struct rtnl_handle *rth,
 			    struct nlmsghdr *h)
 {
+	fprintf(stderr, "2\n");
 
 	if (h->nlmsg_len < NLMSG_LENGTH(sizeof(struct nlmsgerr))) {
 		fprintf(stderr, "ERROR truncated\n");
@@ -852,6 +855,7 @@ int rtnl_dump_filter_nc(struct rtnl_handle *rth,
 static void rtnl_talk_error(struct nlmsghdr *h, struct nlmsgerr *err,
 			    nl_ext_ack_fn_t errfn)
 {
+	fprintf(stderr, "3\n");
 	if (nl_dump_ext_ack(h, errfn))
 		return;
 
@@ -882,6 +886,7 @@ static int __rtnl_talk_iov(struct rtnl_handle *rtnl, struct iovec *iov,
 		h->nlmsg_seq = seq = ++rtnl->seq;
 		if (answer == NULL)
 			h->nlmsg_flags |= NLM_F_ACK;
+			write_rtnl_pcap(h, "/tmp/iproute2_error.pcap");
 	}
 
 	status = sendmsg(rtnl->fd, &msg, 0);
